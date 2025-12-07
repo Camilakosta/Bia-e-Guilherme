@@ -1,128 +1,104 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bia e Guilherme</title>
 
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background: #000;
-    }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-    #container {
-        position: relative;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-    }
+body {
+    overflow: hidden;
+    background: black;
+    width: 100vw;
+    height: 100vh;
+}
 
-    video, canvas {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        object-fit: cover;
-        width: 100vw;
-        height: 100vh;
-    }
+#camera-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-    #frame {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        max-width: 100vw;
-        max-height: 100vh;
-        pointer-events: none;
-    }
+video {
+    width: auto;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Espelhado */
+}
 
-    #buttons {
-        position: absolute;
-        top: 3%;
-        display: flex;
-        gap: 10px;
-        z-index: 10;
-    }
+#frame {
+    position: absolute;
+    width: auto;
+    height: 100%;
+    object-fit: contain; /* Mantém proporção sem esticar */
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
 
-    button {
-        background: #ffffffcc;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 10px;
-        font-size: 13px;
-        cursor: pointer;
-    }
+#buttons {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 14px;
+}
 
-    #saveBtn { display: none; } /* some antes da foto */
+button {
+    background: #ffffffcc;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+button img {
+    width: 26px;
+    height: 26px;
+}
+
+#saveBtn { display: none; } /* Só aparece após foto */
 </style>
 </head>
 
 <body>
 
-<div id="container">
-    <video id="camera" autoplay muted playsinline></video>
-    <img id="frame" src="frame.png">
-    <canvas id="canvas"></canvas>
+<div id="camera-container">
+    <video id="camera" autoplay playsinline></video>
+    <img id="frame" src="moldura.png">
 
     <div id="buttons">
-        <button id="shotBtn">📸 Tirar Foto</button>
-        <button id="saveBtn">💾 Salvar</button>
-        <button id="againBtn">🔄 Outra Foto</button>
+        <button id="switchBtn"><img src="https://cdn-icons-png.flaticon.com/512/1350/1350763.png"></button>
+        <button id="captureBtn"><img src="https://cdn-icons-png.flaticon.com/512/685/685655.png"></button>
+        <button id="saveBtn"><img src="https://cdn-icons-png.flaticon.com/512/992/992661.png"></button>
     </div>
 </div>
+
+<canvas id="canvas" style="display:none;"></canvas>
 
 <script>
 const video = document.getElementById("camera");
 const canvas = document.getElementById("canvas");
-const context = canvas.getContext("2d");
-const shotBtn = document.getElementById("shotBtn");
-const saveBtn = document.getElementById("saveBtn");
-const againBtn = document.getElementById("againBtn");
 const frame = document.getElementById("frame");
+const switchBtn = document.getElementById("switchBtn");
+const captureBtn = document.getElementById("captureBtn");
+const saveBtn = document.getElementById("saveBtn");
+let currentCamera = "user";
 
-// Inicia a câmera
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-.then(stream => { video.srcObject = stream; });
-
-// Tirar a foto
-shotBtn.onclick = () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    context.drawImage(frame, 0, 0, canvas.width, canvas.height);
-
-    video.style.display = "none";
-    canvas.style.display = "block";
-
-    shotBtn.style.display = "none";
-    saveBtn.style.display = "inline-block";
-};
-
-// Salvar
-saveBtn.onclick = () => {
-    const link = document.createElement("a");
-    link.download = "foto.png";
-    link.href = canvas.toDataURL();
-    link.click();
-};
-
-// Outra foto
-againBtn.onclick = () => {
-    canvas.style.display = "none";
-    video.style.display = "block";
-    shotBtn.style.display = "inline-block";
-    saveBtn.style.display = "none";
-};
-</script>
-
-</body>
-</html>
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: currentCamera,
